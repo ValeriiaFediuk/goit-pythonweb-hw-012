@@ -9,6 +9,9 @@ readme = "README.md"
 python = "^3.12"
 asyncpg = "^0.30.0"
 alembic = "^1.14.1"
+fastapi = "^0.115.8"
+uvicorn = "^0.34.0"
+pydantic = {extras = ["email"], version = "^2.10.6"}
 
 
 [build-system]
