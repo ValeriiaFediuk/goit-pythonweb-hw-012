@@ -1,5 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.database.models import User
 from src.repository.contacts import ContactRepository
 from src.schemas.contacts import ContactBase, ContactResponse
 
@@ -11,8 +12,8 @@ class ContactService:
     async def create_contact(self, body: ContactBase):
         return await self.contact_repository.create_contact(body)
 
-    async def get_contacts(self, skip: int, limit: int):
-        return await self.contact_repository.get_contacts(skip, limit)
+    async def get_contacts(self, skip: int, limit: int, user: User):
+        return await self.contact_repository.get_contacts(skip, limit, user)
 
     async def get_contact(self, contact_id: int):
         return await self.contact_repository.get_contact_by_id(contact_id)

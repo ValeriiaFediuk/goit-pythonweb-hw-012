@@ -4,6 +4,7 @@ version = "0.1.0"
 description = ""
 authors = ["ValeriiaFediuk <fediuk.valeriia14@gmail.com>"]
 readme = "README.md"
+package-mode = false
 
 [tool.poetry.dependencies]
 python = "^3.12"
@@ -12,6 +13,13 @@ alembic = "^1.14.1"
 fastapi = "^0.115.8"
 uvicorn = "^0.34.0"
 pydantic = {extras = ["email"], version = "^2.10.6"}
+greenlet = "^3.1.1"
+python-jose = {extras = ["cryptography"], version = "^3.3.0"}
+passlib = {extras = ["bcrypt"], version = "^1.7.4"}
+libgravatar = "^1.0.4"
+python-multipart = "^0.0.20"
+slowapi = "^0.1.9"
+pydantic-settings = "^2.7.1"
 
 
 [build-system]
