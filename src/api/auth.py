@@ -15,6 +15,7 @@ from src.schemas.users import RequestEmail, Token, User, UserCreate, UserLogin
 from src.services.auth import Hash, create_access_token, get_email_from_token
 from src.services.email import send_email
 from src.services.users import UserService
+from src.conf import messages
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -33,7 +34,7 @@ async def register_user(
     if email_user:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Користувач з таким email вже існує",
+            detail=messages.API_ERROR_USER_ALREADY_EXIST,
         )
 
     username_user = await user_service.get_user_by_username(user_data.username)
@@ -55,10 +56,15 @@ async def register_user(
 async def login_user(body: UserLogin, db: Session = Depends(get_db)):
     user_service = UserService(db)
     user = await user_service.get_user_by_email(body.email)
+    if user and not user.confirmed:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=messages.API_ERROR_USER_NOT_AUTHORIZED,
+        )
     if not user or not Hash().verify_password(body.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Неправильний логін або пароль",
+            detail=messages.API_ERROR_WRONG_PASSWORD,
             headers={"WWW-Authenticate": "Bearer"},
         )
 
