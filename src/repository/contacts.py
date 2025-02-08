@@ -24,7 +24,7 @@ class ContactRepository:
         return contact.scalar_one_or_none()
 
     async def create_contact(self, body: ContactBase, user: User) -> Contact:
-        contact = Contact(**body.model_dump(exclude_unset=True))
+        contact = Contact(**body.model_dump(exclude_unset=True), user=user)
         self.db.add(contact)
         await self.db.commit()
         await self.db.refresh(contact)

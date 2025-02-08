@@ -28,7 +28,7 @@ async def read_contact(contact_id: int,
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user)):
     contact_service = ContactService(db)
-    contact = await contact_service.get_contact(contact_id)
+    contact = await contact_service.get_contact(contact_id, user)
     if contact is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=messages.CONTACT_NOT_FOUND
@@ -42,7 +42,7 @@ async def create_contact(
     db: AsyncSession = Depends(get_db), 
     user: User = Depends(get_current_user)):
     contact_service = ContactService(db)
-    return await contact_service.create_contact(body)
+    return await contact_service.create_contact(body, user)
 
 
 @router.put("/{contact_id}", response_model=ContactResponse)
@@ -52,7 +52,7 @@ async def update_contact(
     user: User = Depends(get_current_user)
 ):
     contact_service = ContactService(db)
-    contact = await contact_service.update_contact(contact_id, body)
+    contact = await contact_service.update_contact(contact_id, body, user)
     if contact is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=messages.CONTACT_NOT_FOUND
@@ -64,7 +64,7 @@ async def update_contact(
 async def remove_contact(contact_id: int, db: AsyncSession = Depends(get_db), 
     user: User = Depends(get_current_user)):
     contact_service = ContactService(db)
-    contact = await contact_service.remove_contact(contact_id)
+    contact = await contact_service.remove_contact(contact_id, user)
     if contact is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=messages.CONTACT_NOT_FOUND
