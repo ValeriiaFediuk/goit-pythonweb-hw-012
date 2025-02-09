@@ -15,6 +15,8 @@ from src.database.db import get_db
 from src.conf.config import settings
 from src.services.users import UserService
 from src.database.redis import redis_client
+from src.schemas.users import User
+from src.database.models import User, UserRole
 
 
 class Hash:
@@ -44,7 +46,21 @@ async def create_access_token(data: dict, expires_delta: Optional[int] = None):
     )
     return encoded_jwt
 
-
+def create_reset_token(email: str) -> str:
+    expire = datetime.now(UTC) + timedelta(seconds=app_config.RESET_TOKEN_EXPIRY)
+    to_encode = {"sub": email, "exp": expire}
+    return jwt.encode(
+        to_encode, app_config.JWT_SECRET, algorithm=app_config.JWT_ALGORITHM
+    )
+def verify_reset_token(token: str) -> str | None:
+    try:
+        payload = jwt.decode(
+            token, app_config.JWT_SECRET, algorithms=[app_config.JWT_ALGORITHM]
+        )
+        return payload["sub"]
+    except JWTError:
+        return None
+    
 async def get_current_user(
     token: HTTPAuthorizationCredentials = Depends(oauth2_scheme),
     db: Session = Depends(get_db),
@@ -97,7 +113,6 @@ def create_email_token(data: dict):
     token = jwt.encode(to_encode, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
     return token
 
-
 async def get_email_from_token(token: str):
     try:
         payload = jwt.decode(
@@ -110,3 +125,8 @@ async def get_email_from_token(token: str):
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="Невірний токен для перевірки електронної пошти",
         )
+    
+def get_current_admin_user(current_user: User = Depends(get_current_user)):
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Недостатньо прав доступу")
+    return current_user
