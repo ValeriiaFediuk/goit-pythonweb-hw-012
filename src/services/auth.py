@@ -1,3 +1,4 @@
+import json
 from datetime import datetime, timedelta, UTC
 from typing import Optional
 
@@ -13,6 +14,7 @@ from jose import JWTError, jwt
 from src.database.db import get_db
 from src.conf.config import settings
 from src.services.users import UserService
+from src.database.redis import redis_client
 
 
 class Hash:
@@ -68,6 +70,23 @@ async def get_current_user(
     user = await user_service.get_user_by_username(username)
     if user is None:
         raise credentials_exception
+    # Перевіряємо Redis
+    cached_user = await redis_client.get(f"user:{username}")
+    if cached_user:
+        return json.loads(cached_user)
+    # Якщо немає в Redis, звертаємось до БД
+    user_service = UserService(db)
+    user = await user_service.get_user_by_username(username)
+    if user is None:
+        raise credentials_exception
+    # Кешуємо користувача в Redis
+    user_data = {
+        "id": user.id,
+        "username": user.username,
+        "email": user.email,
+    }
+    await redis_client.setex(f"user:{username}", 3600, json.dumps(user_data))
+
     return user
 
 

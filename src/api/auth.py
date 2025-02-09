@@ -1,3 +1,5 @@
+import json
+import redis.asyncio as redis
 from fastapi import (
     APIRouter,
     BackgroundTasks,
@@ -19,6 +21,12 @@ from src.conf import messages
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
+async def get_cached_user(email: str):
+    user_data = await redis_client.get(f"user:{email}")
+    return json.loads(user_data) if user_data else None
+
+async def cache_user(email: str, user_data: dict):
+    await redis_client.setex(f"user:{email}", 3600, json.dumps(user_data))
 
 # Реєстрація користувача
 @router.post("/register", response_model=User, status_code=status.HTTP_201_CREATED)
@@ -54,19 +62,42 @@ async def register_user(
 # Логін користувача
 @router.post("/login", response_model=Token)
 async def login_user(body: UserLogin, db: Session = Depends(get_db)):
+    cached_user = await get_cached_user(body.email)
+
+    if cached_user:
+        if not Hash().verify_password(body.password, cached_user["hashed_password"]):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=messages.API_ERROR_WRONG_PASSWORD,
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        access_token = await create_access_token(data={"sub": cached_user["username"]})
+        return {"access_token": access_token, "token_type": "bearer"}
+
     user_service = UserService(db)
     user = await user_service.get_user_by_email(body.email)
+
     if user and not user.confirmed:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=messages.API_ERROR_USER_NOT_AUTHORIZED,
         )
+
     if not user or not Hash().verify_password(body.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=messages.API_ERROR_WRONG_PASSWORD,
             headers={"WWW-Authenticate": "Bearer"},
         )
+
+    # Кешуємо користувача після успішної автентифікації
+    user_data = {
+        "username": user.username,
+        "email": user.email,
+        "hashed_password": user.hashed_password,
+    }
+    await cache_user(user.email, user_data)
 
     access_token = await create_access_token(data={"sub": user.username})
     return {"access_token": access_token, "token_type": "bearer"}
