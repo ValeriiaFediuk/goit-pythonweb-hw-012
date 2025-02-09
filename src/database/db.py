@@ -32,5 +32,14 @@ class DatabaseSessionManager:
 sessionmanager = DatabaseSessionManager(settings.DB_URL)
 
 async def get_db():
+    """
+    Provides an asynchronous database session for dependency injection.
+
+    This function uses the `DatabaseSessionManager` to yield a session that can be used
+    in FastAPI endpoint functions for interacting with the database.
+
+    Yields:
+        AsyncSession: A session for executing database queries and transactions.
+    """
     async with sessionmanager.session() as session:
         yield session

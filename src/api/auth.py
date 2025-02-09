@@ -32,10 +32,26 @@ from src.conf import messages
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 async def get_cached_user(email: str):
+    """
+    Fetch the user data from the Redis cache by email.
+
+    Args:
+        email (str): The user's email.
+
+    Returns:
+        dict or None: The user data as a dictionary if found, otherwise None.
+    """
     user_data = await redis_client.get(f"user:{email}")
     return json.loads(user_data) if user_data else None
 
 async def cache_user(email: str, user_data: dict):
+    """
+    Cache the user data in Redis for 1 hour.
+
+    Args:
+        email (str): The user's email.
+        user_data (dict): The data of the user to be cached.
+    """
     await redis_client.setex(f"user:{email}", 3600, json.dumps(user_data))
 
 # Реєстрація користувача
@@ -46,6 +62,21 @@ async def register_user(
     request: Request,
     db: Session = Depends(get_db),
 ):
+    """
+    Register a new user.
+
+    This function checks if the email or username already exists in the system.
+    If not, it hashes the password, creates a new user, and sends a confirmation email.
+
+    Args:
+        user_data (UserCreate): The data required to create a new user.
+        background_tasks (BackgroundTasks): The background tasks to handle email sending.
+        request (Request): The HTTP request object.
+        db (Session): The database session.
+
+    Returns:
+        User: The newly created user.
+    """
     user_service = UserService(db)
 
     email_user = await user_service.get_user_by_email(user_data.email)
@@ -72,6 +103,19 @@ async def register_user(
 # Логін користувача
 @router.post("/login", response_model=Token)
 async def login_user(body: UserLogin, db: Session = Depends(get_db)):
+    """
+    Log in a user and return an access token.
+
+    This function checks if the user exists, verifies the password, and generates an access token.
+    If the user is found in the Redis cache, it is used to avoid redundant database queries.
+
+    Args:
+        body (UserLogin): The login credentials of the user.
+        db (Session): The database session.
+
+    Returns:
+        Token: The access token.
+    """
     cached_user = await get_cached_user(body.email)
 
     if cached_user:
@@ -120,6 +164,21 @@ async def request_email(
     request: Request,
     db: Session = Depends(get_db),
 ):
+    """
+    Request to send a confirmation email for a given email address.
+
+    This function checks if the user's email is already confirmed.
+    If not, it sends a confirmation email.
+
+    Args:
+        body (RequestEmail): The email address to be verified.
+        background_tasks (BackgroundTasks): The background tasks to handle email sending.
+        request (Request): The HTTP request object.
+        db (Session): The database session.
+
+    Returns:
+        dict: A message indicating whether the email was sent or if it was already confirmed.
+    """
     user_service = UserService(db)
     user = await user_service.get_user_by_email(body.email)
 
@@ -134,6 +193,18 @@ async def request_email(
 
 @router.get("/confirmed_email/{token}")
 async def confirmed_email(token: str, db: Session = Depends(get_db)):
+    """
+    Confirm the user's email using a verification token.
+
+    This function verifies the token and confirms the user's email if valid.
+
+    Args:
+        token (str): The verification token from the user's email.
+        db (Session): The database session.
+
+    Returns:
+        dict: A message indicating whether the email was successfully confirmed.
+    """
     email = await get_email_from_token(token)
     user_service = UserService(db)
     user = await user_service.get_user_by_email(email)
@@ -152,7 +223,19 @@ async def forgot_password(
     body: PasswordResetRequest,
     background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
-):
+):  
+    """
+    Initiate the password reset process by sending a reset email.
+
+    Args:
+        request (Request): The HTTP request object.
+        body (PasswordResetRequest): The user's email for password reset.
+        background_tasks (BackgroundTasks): The background tasks to handle email sending.
+        db (AsyncSession): The database session.
+
+    Returns:
+        dict: A message indicating that the password reset email was sent.
+    """
     user_service = UserService(db)
     user = await user_service.get_user_by_email(body.email)
     if not user:
@@ -165,7 +248,17 @@ async def forgot_password(
 @router.post("/reset_password")
 async def reset_password(
     body: PasswordResetConfirm, db: AsyncSession = Depends(get_db)
-):
+):  
+    """
+    Reset the user's password using a valid reset token.
+
+    Args:
+        body (PasswordResetConfirm): The new password and reset token.
+        db (AsyncSession): The database session.
+
+    Returns:
+        dict: A message indicating that the password has been successfully reset.
+    """
     email = verify_reset_token(body.token)
     if not email:
         raise HTTPException(status_code=400, detail="Invalid or expired token")
