@@ -1,5 +1,6 @@
 import json
 import redis.asyncio as redis
+from src.database.redis import redis_client
 from fastapi import (
     APIRouter,
     BackgroundTasks,

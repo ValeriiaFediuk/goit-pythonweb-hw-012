@@ -1,3 +1,4 @@
+
 from datetime import date
 
 from fastapi import status
@@ -82,7 +83,6 @@ def test_update_contact_not_found(client, get_token):
     assert response.status_code == status.HTTP_404_NOT_FOUND, response.text
     data = response.json()
     assert data["detail"] == messages.CONTACT_NOT_FOUND
-
 def test_delete_contact(client, get_token):
     response = client.delete(
         "/api/contacts/1", headers={"Authorization": f"Bearer {get_token}"}

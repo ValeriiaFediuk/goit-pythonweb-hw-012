@@ -1,7 +1,8 @@
+import pytest
+
 from pprint import pprint
 from unittest.mock import Mock
 
-import pytest
 from fastapi import status
 from sqlalchemy import select
 
@@ -13,8 +14,8 @@ user_data = {
     "username": "agent007",
     "email": "agent007@gmail.com",
     "password": "12345678",
+    "role": "USER",
 }
-
 
 def test_signup(client, monkeypatch):
     mock_send_email = Mock()
